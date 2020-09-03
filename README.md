@@ -4,8 +4,8 @@ Flutter alarm clock app which will progressively increase sound volume over a se
 
 ## Roadmap
 
-- 0.0.1 &rarr; execute a function at the exact time :hourglass_flowing_sand:
-- 0.0.2 &rarr; load and play a song
+- 0.0.1 &rarr; execute a function at the exact time :heavy_check_mark:
+- 0.0.2 &rarr; load and play a song :hourglass_flowing_sand:
 - 0.0.3 &rarr; increase sound volume over a span of time
 
 <!--- Spacing -->

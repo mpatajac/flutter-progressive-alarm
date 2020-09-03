@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:android_alarm_manager/android_alarm_manager.dart';
 
-void main() {
+void testFunction() {
+  print("Test completed: function executed at desired time.");
+}
+
+void main() async {
+  final int testAlarmID = 0;
+  final DateTime time = new DateTime(2020, 9, 3, 18, 24);
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await AndroidAlarmManager.initialize();
+  
   runApp(MyApp());
+
+  await AndroidAlarmManager.oneShotAt(time, testAlarmID, testFunction);
 }
 
 class MyApp extends StatelessWidget {
