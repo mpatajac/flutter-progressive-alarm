@@ -14,9 +14,18 @@ void main() async {
   await AndroidAlarmManager.initialize();
 
   runApp(MyApp());
-  
+
   final assetsAudioPlayer = AssetsAudioPlayer();
-  assetsAudioPlayer.open(Audio("assets/audio/test.mp3"));
+  // assetsAudioPlayer.open(Audio("assets/audio/test.mp3"));
+  try {
+    await assetsAudioPlayer.open(
+      Audio.liveStream(
+        "http://kepler.shoutca.st:8404/"
+      )
+    );
+  } catch (e) {
+    print("Stream not working.");
+  }
 
   await AndroidAlarmManager.oneShotAt(time, testAlarmID, testFunction);
 }
