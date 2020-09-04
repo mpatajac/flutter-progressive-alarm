@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
+import 'package:assets_audio_player/assets_audio_player.dart';
 
 void testFunction() {
   print("Test completed: function executed at desired time.");
@@ -7,12 +8,15 @@ void testFunction() {
 
 void main() async {
   final int testAlarmID = 0;
-  final DateTime time = new DateTime(2020, 9, 3, 18, 24);
+  final DateTime time = new DateTime(2020, 9, 4, 13, 21);
 
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
-  
+
   runApp(MyApp());
+  
+  final assetsAudioPlayer = AssetsAudioPlayer();
+  assetsAudioPlayer.open(Audio("assets/audio/test.mp3"));
 
   await AndroidAlarmManager.oneShotAt(time, testAlarmID, testFunction);
 }
