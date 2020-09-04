@@ -1,33 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
+import 'package:volume/volume.dart';
 
 void testFunction() {
   print("Test completed: function executed at desired time.");
 }
 
 void main() async {
-  final int testAlarmID = 0;
+  final int alarmID = 0;
   final DateTime time = new DateTime(2020, 9, 4, 13, 21);
+  int volume = 1;
 
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
 
   runApp(MyApp());
 
-  final assetsAudioPlayer = AssetsAudioPlayer();
-  // assetsAudioPlayer.open(Audio("assets/audio/test.mp3"));
+  await AndroidAlarmManager.oneShotAt(time, alarmID, testFunction);
+
+  /// Set volume
+  ///
+  /// Take control of music volume,
+  /// save initial volume
+  /// and set volume to 1 (minimum)
+  await Volume.controlVolume(AudioManager.STREAM_MUSIC);
+  final int initialVolume = await Volume.getVol;
+  await Volume.setVol(volume);
+
+  /// Initalize player
+  final audioPlayer = AssetsAudioPlayer();
+
+  /// Start player
+  const streamLink = "http://kepler.shoutca.st:8404/";
   try {
-    await assetsAudioPlayer.open(
-      Audio.liveStream(
-        "http://kepler.shoutca.st:8404/"
-      )
-    );
+    await audioPlayer.open(Audio.liveStream(streamLink));
   } catch (e) {
+    // Use song as a backup
+    await audioPlayer.open(Audio("assets/audio/test.mp3"));
     print("Stream not working.");
   }
 
-  await AndroidAlarmManager.oneShotAt(time, testAlarmID, testFunction);
+  /// Progressively increase volume
+  while (volume < await Volume.getMaxVol) {
+    await Future.delayed(const Duration(seconds: 5), () async {
+      await Volume.setVol(++volume);
+    });
+  }
+
+  /// Volume fine tuning
+  // audioPlayer.setVolume(0.5);
+
+  /// Reset volume and stop the player
+  await Future.delayed(const Duration(seconds: 10), () {});
+  await Volume.setVol(initialVolume);
+  await audioPlayer.stop();
 }
 
 class MyApp extends StatelessWidget {

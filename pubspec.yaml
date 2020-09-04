@@ -31,6 +31,7 @@ dependencies:
 
   android_alarm_manager: '>=0.4.1 <2.0.0'
   assets_audio_player: ^2.0.9
+  volume: ^1.0.1
 
 dev_dependencies:
   flutter_test:
