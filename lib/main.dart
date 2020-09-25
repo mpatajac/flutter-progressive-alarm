@@ -3,31 +3,9 @@ import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:volume/volume.dart';
 
-void testFunction() {
-  print("Test completed: function executed at desired time.");
-}
+AndroidAlarmManager alarmManager;
 
-void main() async {
-  final int alarmID = 0;
-  final DateTime time = new DateTime(2020, 9, 4, 13, 21);
-  int volume = 1;
-
-  WidgetsFlutterBinding.ensureInitialized();
-  await AndroidAlarmManager.initialize();
-
-  runApp(MyApp());
-
-  await AndroidAlarmManager.oneShotAt(time, alarmID, testFunction);
-
-  /// Set volume
-  ///
-  /// Take control of music volume,
-  /// save initial volume
-  /// and set volume to 1 (minimum)
-  await Volume.controlVolume(AudioManager.STREAM_MUSIC);
-  final int initialVolume = await Volume.getVol;
-  await Volume.setVol(volume);
-
+void alarm() async {
   /// Initalize player
   final audioPlayer = AssetsAudioPlayer();
 
@@ -36,33 +14,34 @@ void main() async {
   try {
     await audioPlayer.open(Audio.liveStream(streamLink));
   } catch (e) {
-    // Use song as a backup
+    /// Use song as a backup
     await audioPlayer.open(Audio("assets/audio/test.mp3"));
     print("Stream not working.");
   }
 
-  /// Progressively increase volume
-  while (volume < await Volume.getMaxVol) {
-    await Future.delayed(const Duration(seconds: 5), () async {
-      await Volume.setVol(++volume);
-    });
-  }
-
-  /// Volume fine tuning
-  // audioPlayer.setVolume(0.5);
-
-  /// Reset volume and stop the player
-  await Future.delayed(const Duration(seconds: 10), () {});
-  await Volume.setVol(initialVolume);
-  await audioPlayer.stop();
+  _AlarmSetupState.volume();
 }
 
-class MyApp extends StatelessWidget {
+void main() async {
+  final int alarmID = 0;
+  final DateTime time = new DateTime(2020, 9, 17, 12, 50);
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await AndroidAlarmManager.initialize();
+
+  runApp(ProgressiveAlarm());
+
+  await AndroidAlarmManager.oneShotAt(time, alarmID, alarm);
+
+  
+}
+
+class ProgressiveAlarm extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Progressive Alarm',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -79,13 +58,13 @@ class MyApp extends StatelessWidget {
         // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: AlarmSetup(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+class AlarmSetup extends StatefulWidget {
+  AlarmSetup({Key key, this.title}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -99,11 +78,49 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _AlarmSetupState createState() => _AlarmSetupState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _AlarmSetupState extends State<AlarmSetup> {
   int _counter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    initAudioStreamType();
+  }
+
+  void initAudioStreamType() async {
+    await Volume.controlVolume(AudioManager.STREAM_MUSIC);
+  }
+
+  static void volume() async {
+    /// Set volume
+    ///
+    /// Take control of music volume,
+    /// save initial volume
+    /// and set volume to 1 (minimum)
+    int volume = 1;
+    final int initialVolume = await Volume.getVol;
+    await Volume.setVol(volume);
+
+    /// Progressively increase volume
+    while (volume < await Volume.getMaxVol) {
+      await Future.delayed(const Duration(seconds: 5), () async {
+        await Volume.setVol(++volume);
+        print("Increasing volume...\n");
+      });
+    }
+
+    /// Volume fine tuning
+    // audioPlayer.setVolume(0.5);
+
+    /// Reset volume and stop the player
+    await Future.delayed(const Duration(seconds: 10), () {});
+    await Volume.setVol(initialVolume);
+    // await audioPlayer.stop();
+  }
+
 
   void _incrementCounter() {
     setState(() {
