@@ -1,5 +1,3 @@
-// TODO: isprobat s _alarmom, doraditi volume change
-
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
@@ -29,8 +27,6 @@ void main() async {
   await AndroidAlarmManager.initialize();
 
   runApp(ProgressiveAlarm());
-
-  // await AndroidAlarmManager.oneShotAt(time, alarmID, alarm);
 }
 
 class ProgressiveAlarm extends StatelessWidget {
@@ -186,7 +182,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
   void _updateAlarmState(bool startAlarm) async {
     if (startAlarm) {
-      await AndroidAlarmManager.oneShotAt(_alarmTime, _alarmID, _alarm);
+      await AndroidAlarmManager.oneShotAt(_alarmTime, _alarmID, _alarm,
+          allowWhileIdle: true, exact: true, wakeup: true);
     } else {
       if (_didAlarmStart()) {
         await Volume.setVol(_initialVolume);
