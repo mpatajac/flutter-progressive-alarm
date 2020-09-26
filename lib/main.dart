@@ -5,23 +5,6 @@ import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:volume/volume.dart';
 
-void alarm() async {
-  /// Initalize player
-  final audioPlayer = AssetsAudioPlayer();
-
-  /// Start player
-  const streamLink = "http://kepler.shoutca.st:8404/";
-  try {
-    await audioPlayer.open(Audio.liveStream(streamLink));
-  } catch (e) {
-    /// Use song as a backup
-    await audioPlayer.open(Audio("assets/audio/test.mp3"));
-    print("Stream not working.");
-  }
-
-  // _AlarmSetupState._updateVolume();
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(ProgressiveAlarm());
@@ -48,11 +31,10 @@ class AlarmSetup extends StatefulWidget {
 
 class _AlarmSetupState extends State<AlarmSetup> {
   bool _alarmSet;
-  int _alarmID;
+  int _alarmID, _initialVolume;
   TimeOfDay _time;
   DateTime _alarmTime;
-  static AssetsAudioPlayer _audioPlayer;
-  static int _initialVolume;
+  static AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
   void initState() {
@@ -60,8 +42,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmSet = false;
     _alarmID = 0;
     _time = TimeOfDay(hour: 9, minute: 0);
-    _updateAlarmTime();   // initialize _alarmTime
-    
+    _updateAlarmTime(); // initialize _alarmTime
+
     initAsync();
   }
 
@@ -93,16 +75,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
                     'Select alarm time',
                     style: TextStyle(fontSize: 28),
                   ),
-                  // TODO: extract to method?
                   onPressed: () async {
                     TimeOfDay chosenTime = await showTimePicker(
                         context: context, initialTime: TimeOfDay.now());
-                    setState(() {
-                      if (chosenTime != null) {
+                    if (chosenTime != null) {
+                      setState(() {
                         _time = chosenTime;
-                        _updateAlarmTime();
-                      }
-                    });
+                      });
+
+                      _updateAlarmTime();
+                    }
                   }),
               SizedBox(height: 100),
               Container(
@@ -157,7 +139,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return number < 10 ? '0$number' : '$number';
   }
 
-  // TODO: add waitTime
+  // TODO: add waitTime (and 'exit'?)
   String _formSnackbarContent(bool alarmToggleState) {
     if (alarmToggleState) {
       return 'Alarm set at ${_formatTime()}!';
@@ -178,8 +160,12 @@ class _AlarmSetupState extends State<AlarmSetup> {
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
         await Volume.setVol(_initialVolume);
-        await _audioPlayer.stop();
-        exit(1);
+        await _AlarmSetupState._audioPlayer.stop();
+
+        // TODO: replace delay with manual snackbar exit?
+        Future.delayed(Duration(seconds: 5), () {
+          exit(1);
+        });
       } else {
         await AndroidAlarmManager.cancel(_alarmID);
       }
@@ -238,21 +224,18 @@ class _AlarmSetupState extends State<AlarmSetup> {
     /// Volume fine tuning
     // audioPlayer.setVolume(0.5);
   }
-  
-  static void _alarm() async {
-    /// Initialize player
-    _audioPlayer = AssetsAudioPlayer();
 
+  static void _alarm() async {
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
     try {
-      await _audioPlayer.open(Audio.liveStream(streamLink));
+      await _AlarmSetupState._audioPlayer.open(Audio.liveStream(streamLink));
     } catch (e) {
       /// Use song as a backup
-      await _audioPlayer.open(Audio("assets/audio/test.mp3"));
+      await _AlarmSetupState._audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
 
-    _updateVolume();
+    // _updateVolume();
   }
 }
