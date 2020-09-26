@@ -1,9 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:volume/volume.dart';
-
-AndroidAlarmManager alarmManager;
 
 void alarm() async {
   /// Initalize player
@@ -19,13 +19,11 @@ void alarm() async {
     print("Stream not working.");
   }
 
-  _AlarmSetupState.volume();
+  // _AlarmSetupState._updateVolume();
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AndroidAlarmManager.initialize();
-
   runApp(ProgressiveAlarm());
 }
 
@@ -53,7 +51,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
   int _alarmID;
   TimeOfDay _time;
   DateTime _alarmTime;
-  static AssetsAudioPlayer audioPlayer;
+  static AssetsAudioPlayer _audioPlayer;
   static int _initialVolume;
 
   @override
@@ -62,39 +60,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmSet = false;
     _alarmID = 0;
     _time = TimeOfDay(hour: 9, minute: 0);
-    _alarmTime = DateTime.now();
-    initAudio();
+    _updateAlarmTime();   // initialize _alarmTime
+    
+    initAsync();
   }
 
-  void initAudio() async {
+  void initAsync() async {
+    await AndroidAlarmManager.initialize();
+
     await Volume.controlVolume(AudioManager.STREAM_MUSIC);
     _initialVolume = await Volume.getVol;
-  }
-
-  static void volume() async {
-    /// Set volume
-    ///
-    /// Take control of music volume,
-    /// save initial volume
-    /// and set volume to 1 (minimum)
-    int volume = 1;
-    await Volume.setVol(volume);
-
-    /// Progressively increase volume
-    while (volume < await Volume.getMaxVol) {
-      await Future.delayed(const Duration(seconds: 5), () async {
-        await Volume.setVol(++volume);
-        print("Increasing volume...\n");
-      });
-    }
-
-    /// Volume fine tuning
-    // audioPlayer.setVolume(0.5);
-
-    /// Reset volume and stop the player
-    await Future.delayed(const Duration(seconds: 10), () {});
-    await Volume.setVol(_initialVolume);
-    // await audioPlayer.stop();
   }
 
   @override
@@ -118,6 +93,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
                     'Select alarm time',
                     style: TextStyle(fontSize: 28),
                   ),
+                  // TODO: extract to method?
                   onPressed: () async {
                     TimeOfDay chosenTime = await showTimePicker(
                         context: context, initialTime: TimeOfDay.now());
@@ -144,9 +120,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
                     Scaffold.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          alarmToggleState
-                              ? 'Alarm set at ${_formatToastTime()}!'
-                              : 'Alarm stopped!',
+                          _formSnackbarContent(alarmToggleState),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20.0,
@@ -170,7 +144,10 @@ class _AlarmSetupState extends State<AlarmSetup> {
     );
   }
 
-  String _formatToastTime() {
+  String _formatTime({TimeOfDay time}) {
+    /// Use alarm time as default value
+    time = time ?? _time;
+
     int hour = _time.hour;
     int minute = _time.minute;
     return '${_fixLeadingZero(hour)}:${_fixLeadingZero(minute)}';
@@ -180,14 +157,29 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return number < 10 ? '0$number' : '$number';
   }
 
+  // TODO: add waitTime
+  String _formSnackbarContent(bool alarmToggleState) {
+    if (alarmToggleState) {
+      return 'Alarm set at ${_formatTime()}!';
+    }
+
+    if (_didAlarmStart()) {
+      return 'Alarm stopped!';
+    }
+
+    return 'Alarm canceled!';
+  }
+
   void _updateAlarmState(bool startAlarm) async {
     if (startAlarm) {
       await AndroidAlarmManager.oneShotAt(_alarmTime, _alarmID, _alarm,
           allowWhileIdle: true, exact: true, wakeup: true);
     } else {
       if (_didAlarmStart()) {
+        /// Reset volume and stop the player/app
         await Volume.setVol(_initialVolume);
-        await audioPlayer.stop();
+        await _audioPlayer.stop();
+        exit(1);
       } else {
         await AndroidAlarmManager.cancel(_alarmID);
       }
@@ -226,20 +218,41 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
+  static void _updateVolume() async {
+    /// Set volume
+    ///
+    /// Take control of music volume,
+    /// save initial volume
+    /// and set volume to 1 (minimum)
+    int volume = 1;
+    await Volume.setVol(volume);
+
+    /// Progressively increase volume
+    while (volume < await Volume.getMaxVol) {
+      await Future.delayed(const Duration(seconds: 5), () async {
+        await Volume.setVol(++volume);
+        print("Increasing volume...\n");
+      });
+    }
+
+    /// Volume fine tuning
+    // audioPlayer.setVolume(0.5);
+  }
+  
   static void _alarm() async {
-    /// Initalize player
-    audioPlayer = AssetsAudioPlayer();
+    /// Initialize player
+    _audioPlayer = AssetsAudioPlayer();
 
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
     try {
-      await audioPlayer.open(Audio.liveStream(streamLink));
+      await _audioPlayer.open(Audio.liveStream(streamLink));
     } catch (e) {
       /// Use song as a backup
-      await audioPlayer.open(Audio("assets/audio/test.mp3"));
+      await _audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
 
-    volume();
+    _updateVolume();
   }
 }
