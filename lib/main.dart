@@ -15,7 +15,7 @@ class ProgressiveAlarm extends StatelessWidget {
     return MaterialApp(
       title: 'Progressive Alarm',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.lightBlue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: AlarmSetup(),
@@ -34,6 +34,10 @@ class _AlarmSetupState extends State<AlarmSetup> {
   TimeOfDay _time;
   DateTime _alarmTime;
   static AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
+
+  Color _bright = Color.fromRGBO(245, 245, 245, 1);
+  Color _blue = Colors.lightBlue;
+  Color _dark = Color.fromRGBO(50, 50, 50, 1);
 
   @override
   void initState() {
@@ -54,7 +58,14 @@ class _AlarmSetupState extends State<AlarmSetup> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: Text('⏰\t\tProgressive Alarm\t\t⏰')),
+        title: Center(
+          child: Text(
+            '⏰\t\tProgressive Alarm\t\t⏰',
+            style: TextStyle(
+              color: _bright
+            ),
+          )
+        ),
       ),
       body: Builder(builder: (BuildContext context) {
         return Center(
@@ -62,34 +73,37 @@ class _AlarmSetupState extends State<AlarmSetup> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               OutlineButton(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding: EdgeInsets.symmetric(vertical: 20, horizontal: 50),
-                  color: Colors.transparent,
-                  textColor: Colors.blue,
-                  child: Text(
-                    '${_formatTime()}',
-                    style: TextStyle(fontSize: 46),
-                  ),
-                  onPressed: () async {
-                    TimeOfDay chosenTime = await showTimePicker(
-                        context: context, initialTime: TimeOfDay.now());
-                    if (chosenTime != null) {
-                      setState(() {
-                        _time = chosenTime;
-                      });
-
-                      _updateAlarmTime();
-                    }
-                  }),
-              SizedBox(height: 100),
-              Container(
-                child: Text(
-                  'Toggle alarm',
-                  style: TextStyle(fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                height: 30,
+                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 50),
+                color: Colors.transparent,
+                textColor: _blue,
+                child: Text(
+                  '${_formatTime()}',
+                  style: TextStyle(fontSize: 46),
+                ),
+                onPressed: () async {
+                  TimeOfDay chosenTime = await showTimePicker(
+                      context: context, initialTime: TimeOfDay.now());
+                  if (chosenTime != null) {
+                    setState(() {
+                      _time = chosenTime;
+                    });
+
+                    _updateAlarmTime();
+                  }
+                },
+                borderSide: BorderSide(color: _blue),
               ),
+              SizedBox(height: 100),
+              // Container(
+              //   child: Text(
+              //     'Toggle alarm',
+              //     style: TextStyle(fontSize: 16, color: _bright),
+              //   ),
+              //   height: 30,
+              // ),
               Transform.scale(
                 scale: 2.0,
                 child: Switch(
@@ -105,9 +119,17 @@ class _AlarmSetupState extends State<AlarmSetup> {
                             fontWeight: FontWeight.bold,
                             height: 1.5,
                             letterSpacing: 1.1,
+                            color: _bright
                           ),
                         ),
-                        backgroundColor: Colors.blue,
+                        action: !alarmToggleState && _didAlarmStart()
+                            ? SnackBarAction(
+                                label: "Exit",
+                                onPressed: () => {exit(1)},
+                                textColor: _bright,
+                              )
+                            : null,
+                        backgroundColor: _blue,
                       ),
                     );
 
@@ -119,6 +141,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
           ),
         );
       }),
+      backgroundColor: _dark,
     );
   }
 
@@ -135,7 +158,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return number < 10 ? '0$number' : '$number';
   }
 
-  // TODO: add waitTime (and 'exit'?)
+  // TODO: add waitTime
   String _formSnackbarContent(bool alarmToggleState) {
     if (alarmToggleState) {
       return 'Alarm set for ${_formatTime()}!';
@@ -160,10 +183,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
           await _AlarmSetupState._audioPlayer.dispose();
           await _AlarmSetupState._audioPlayer.stop();
         } catch (e) {
-          // TODO: replace delay with manual snackbar exit?
-          Future.delayed(Duration(seconds: 5), () {
-            exit(1);
-          });
+          exit(1);
         }
       } else {
         await AndroidAlarmManager.cancel(_alarmID);
@@ -194,7 +214,10 @@ class _AlarmSetupState extends State<AlarmSetup> {
     DateTime alarmTime = new DateTime(
         now.year,
         now.month,
-        _time.hour >= now.hour ? now.day : (now.day + 1),
+        (_time.hour < now.hour ||
+                _time.hour == now.hour && _time.minute < now.minute)
+            ? (now.day + 1)
+            : now.day,
         _time.hour,
         _time.minute);
 
