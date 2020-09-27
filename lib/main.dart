@@ -33,6 +33,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   int _alarmID;
   TimeOfDay _time;
   DateTime _alarmTime;
+  // type is TimeOfDay for easier display
+  TimeOfDay _timeRemaining;
   static AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   Color _bright = Color.fromRGBO(245, 245, 245, 1);
@@ -45,6 +47,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmSet = false;
     _alarmID = 0;
     _time = TimeOfDay(hour: 9, minute: 0);
+    _determineTimeRemaining();
     _updateAlarmTime(); // initialize _alarmTime
 
     initAsync();
@@ -59,13 +62,10 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return Scaffold(
       appBar: AppBar(
         title: Center(
-          child: Text(
-            '⏰\t\tProgressive Alarm\t\t⏰',
-            style: TextStyle(
-              color: _bright
-            ),
-          )
-        ),
+            child: Text(
+          '⏰\t\tProgressive Alarm\t\t⏰',
+          style: TextStyle(color: _bright),
+        )),
       ),
       body: Builder(builder: (BuildContext context) {
         return Center(
@@ -96,14 +96,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
                 },
                 borderSide: BorderSide(color: _blue),
               ),
+              Container(
+                child: _alarmSet
+                    ? Text(
+                        '${_formatTime(time: _timeRemaining)}',
+                        style: TextStyle(color: _bright),
+                      )
+                    : null,
+                margin: EdgeInsets.only(top: 10), 
+              ),
               SizedBox(height: 100),
-              // Container(
-              //   child: Text(
-              //     'Toggle alarm',
-              //     style: TextStyle(fontSize: 16, color: _bright),
-              //   ),
-              //   height: 30,
-              // ),
               Transform.scale(
                 scale: 2.0,
                 child: Switch(
@@ -115,12 +117,11 @@ class _AlarmSetupState extends State<AlarmSetup> {
                           _formSnackbarContent(alarmToggleState),
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.bold,
-                            height: 1.5,
-                            letterSpacing: 1.1,
-                            color: _bright
-                          ),
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold,
+                              height: 1.5,
+                              letterSpacing: 1.1,
+                              color: _bright),
                         ),
                         action: !alarmToggleState && _didAlarmStart()
                             ? SnackBarAction(
@@ -149,8 +150,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
     /// Use alarm time as default value
     time = time ?? _time;
 
-    int hour = _time.hour;
-    int minute = _time.minute;
+    int hour = time.hour;
+    int minute = time.minute;
     return '${_fixLeadingZero(hour)}:${_fixLeadingZero(minute)}';
   }
 
@@ -158,7 +159,24 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return number < 10 ? '0$number' : '$number';
   }
 
-  // TODO: add waitTime
+  void _determineTimeRemaining() {
+    TimeOfDay now = TimeOfDay.now();
+    int alarmInMinutes = _time.hour * 60 + _time.minute;
+    int nowInMinutes = now.hour * 60 + now.minute;
+    int remainingInMinutes = alarmInMinutes - nowInMinutes;
+    if (nowInMinutes > alarmInMinutes) {
+      remainingInMinutes += 1440;
+    }
+
+    int remainingHours = remainingInMinutes ~/ 60;
+    int remainingMinutes = remainingInMinutes - (remainingHours * 60);
+
+    setState(() {
+      _timeRemaining =
+          TimeOfDay(hour: remainingHours, minute: remainingMinutes);
+    });
+  }
+
   String _formSnackbarContent(bool alarmToggleState) {
     if (alarmToggleState) {
       return 'Alarm set for ${_formatTime()}!';
@@ -175,6 +193,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     if (startAlarm) {
       await AndroidAlarmManager.oneShotAt(_alarmTime, _alarmID, _alarm,
           allowWhileIdle: true, exact: true, wakeup: true);
+      _determineTimeRemaining();
     } else {
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
@@ -187,6 +206,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
         }
       } else {
         await AndroidAlarmManager.cancel(_alarmID);
+        print("Alarm canceled.");
       }
     }
 
