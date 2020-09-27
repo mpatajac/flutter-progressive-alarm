@@ -40,6 +40,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
   Color _bright = Color.fromRGBO(245, 245, 245, 1);
   Color _blue = Colors.lightBlue;
   Color _dark = Color.fromRGBO(50, 50, 50, 1);
+  Color _midDark = Color.fromRGBO(75, 75, 75, 1);
 
   @override
   void initState() {
@@ -103,13 +104,14 @@ class _AlarmSetupState extends State<AlarmSetup> {
                         style: TextStyle(color: _bright),
                       )
                     : null,
-                margin: EdgeInsets.only(top: 10), 
+                margin: EdgeInsets.only(top: 20), 
               ),
               SizedBox(height: 100),
               Transform.scale(
                 scale: 2.0,
                 child: Switch(
                   value: _alarmSet,
+                  inactiveThumbColor: _midDark,
                   onChanged: (bool alarmToggleState) {
                     Scaffold.of(context).showSnackBar(
                       SnackBar(
