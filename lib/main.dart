@@ -298,7 +298,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     print("Maximum volume reached!");
   }
 
-  double _determineVolume(double x) {
+  static double _determineVolume(double x) {
     switch (_volumeIncreaseRate) {
       case VolumeIncreaseRate.Constant:
         return x;
