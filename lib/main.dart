@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
@@ -219,16 +220,11 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
   bool _didAlarmStart() {
     DateTime now = DateTime.now();
-    if (now.day < _alarmTime.day) {
-      return false;
-    }
-    if (now.hour < _alarmTime.hour) {
-      return false;
-    }
-    if (now.minute < _alarmTime.minute) {
-      return false;
-    }
-    return true;
+    return !(
+      now.day < _alarmTime.day ||
+      now.hour < _alarmTime.hour ||
+      now.minute < _alarmTime.minute
+    );
   }
 
   void _updateAlarmTime() {
@@ -250,12 +246,17 @@ class _AlarmSetupState extends State<AlarmSetup> {
   }
 
   static void _updateVolume() async {
-    double volume = 0.0;
+    final int steps = 60;
+    final double deltaTime = 0.02;
+    final Function determineVolume = (double x) => pow(x, 6/10);
 
-    while (volume < 1.0) {
+    double volume = 0.0;
+    double currentTime = 0.0;
+
+    for (int i = 0; i < steps; ++i) {
       await Future.delayed(const Duration(seconds: 5), () async {
-        // TODO: setup change rate to personal preference
-        volume += 0.1;
+        currentTime += deltaTime;
+        volume = determineVolume(currentTime);
         await _AlarmSetupState._audioPlayer.setVolume(volume);
         print("Increasing volume to: $volume");
       });
