@@ -117,7 +117,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
                         style: TextStyle(color: _bright),
                       )
                     : null,
-                margin: EdgeInsets.only(top: 20), 
+                margin: EdgeInsets.only(top: 20),
               ),
               SizedBox(height: 100),
               Transform.scale(
@@ -128,7 +128,9 @@ class _AlarmSetupState extends State<AlarmSetup> {
                   onChanged: (bool alarmToggleState) {
                     Scaffold.of(context).showSnackBar(
                       SnackBar(
-                        duration: Duration(seconds: 10),
+                        duration: !alarmToggleState && _didAlarmStart()
+                            ? Duration(seconds: 10)
+                            : Duration(seconds: 4),
                         content: Text(
                           _formSnackbarContent(alarmToggleState),
                           textAlign: TextAlign.center,
@@ -270,7 +272,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
     for (int i = 0; i < steps; ++i) {
       if (!_alarmRunning) return;
-      
+
       await Future.delayed(const Duration(seconds: 5), () async {
         currentTime += deltaTime;
         volume = determineVolume(currentTime);
@@ -295,7 +297,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
       await _audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
-    
+
     await _audioPlayer.setVolume(0.0);
 
     _updateVolume();
