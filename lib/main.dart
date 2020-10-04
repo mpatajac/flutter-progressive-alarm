@@ -31,6 +31,7 @@ class AlarmSetup extends StatefulWidget {
 
 class _AlarmSetupState extends State<AlarmSetup> {
   bool _alarmSet;
+  bool _alarmRunning;
   String _taskID;
   TimeOfDay _time;
   DateTime _alarmTime;
@@ -47,6 +48,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
   void initState() {
     super.initState();
     _alarmSet = false;
+    _alarmRunning = false;
     _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
     _determineTimeRemaining();
@@ -126,6 +128,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
                   onChanged: (bool alarmToggleState) {
                     Scaffold.of(context).showSnackBar(
                       SnackBar(
+                        duration: Duration(seconds: 10),
                         content: Text(
                           _formSnackbarContent(alarmToggleState),
                           textAlign: TextAlign.center,
@@ -210,7 +213,9 @@ class _AlarmSetupState extends State<AlarmSetup> {
           periodic: false));
       _determineTimeRemaining();
     } else {
+      _alarmRunning = false;
       BackgroundFetch.stop(_taskID);
+
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
         try {
@@ -264,6 +269,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
     double currentTime = 0.0;
 
     for (int i = 0; i < steps; ++i) {
+      if (!_alarmRunning) return;
+      
       await Future.delayed(const Duration(seconds: 5), () async {
         currentTime += deltaTime;
         volume = determineVolume(currentTime);
@@ -276,6 +283,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   }
 
   void _alarm() async {
+    _alarmRunning = true;
+
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
 
