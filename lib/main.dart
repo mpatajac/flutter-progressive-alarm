@@ -1,11 +1,8 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:android_alarm_manager/android_alarm_manager.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
-
-enum VolumeIncreaseRate { Speeding, Constant, Slowing }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,8 +33,6 @@ class _AlarmSetupState extends State<AlarmSetup> {
   int _alarmID;
   TimeOfDay _time;
   DateTime _alarmTime;
-  static int _alarmDuration;
-  static VolumeIncreaseRate _volumeIncreaseRate;
   static AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
@@ -46,8 +41,6 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmSet = false;
     _alarmID = 0;
     _time = TimeOfDay(hour: 9, minute: 0);
-    _alarmDuration = 5;
-    _volumeIncreaseRate = VolumeIncreaseRate.Constant;
     _updateAlarmTime(); // initialize _alarmTime
 
     initAsync();
@@ -66,9 +59,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
       body: Builder(builder: (BuildContext context) {
         return Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              SizedBox(height: 40),
               OutlineButton(
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
@@ -90,58 +82,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
                       _updateAlarmTime();
                     }
                   }),
-              SizedBox(height: 50),
-              Container(
-                child: Text(
-                  'Alarm increase rate',
-                  style: TextStyle(fontSize: 16),
-                ),
-                height: 30,
-              ),
-              DropdownButton(
-                value: _volumeIncreaseRate,
-                items: [
-                  DropdownMenuItem(
-                    child: Text("Start slow, gradualy speed up"),
-                    value: VolumeIncreaseRate.Speeding,
-                  ),
-                  DropdownMenuItem(
-                    child: Text("Keep constant rate"),
-                    value: VolumeIncreaseRate.Constant,
-                  ),
-                  DropdownMenuItem(
-                    child: Text("Start fast, gradualy slow down"),
-                    value: VolumeIncreaseRate.Slowing,
-                  ),
-                ],
-                onChanged: (VolumeIncreaseRate vir) =>
-                    _updateVolumeIncreaseRate(vir),
-                icon: Icon(Icons.show_chart),
-              ),
-              SizedBox(height: 50),
-              Container(
-                child: Text(
-                  'Alarm duration (in minutes)',
-                  style: TextStyle(fontSize: 16),
-                ),
-                height: 30,
-              ),
-              Slider(
-                min: 1,
-                max: 10,
-                divisions: 9,
-                value: _alarmDuration.toDouble(),
-                onChanged: (value) => _updateAlarmDuration(value.toInt()),
-                label: _alarmDuration.toString(),
-              ),
-              Wrap(
-                children: [
-                  Text("1"),
-                  Text("10"),
-                ],
-                spacing: MediaQuery.of(context).size.width - 75,
-              ),
-              SizedBox(height: 40),
+              SizedBox(height: 100),
               Container(
                 child: Text(
                   'Toggle alarm',
@@ -214,13 +155,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
     } else {
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
-        await _AlarmSetupState._audioPlayer.stop();
-        await _AlarmSetupState._audioPlayer.dispose();
-
-        // TODO: replace delay with manual snackbar exit?
-        Future.delayed(Duration(seconds: 5), () {
-          exit(1);
-        });
+        try {
+          await _AlarmSetupState._audioPlayer.setVolume(0.0);
+          await _AlarmSetupState._audioPlayer.dispose();
+          await _AlarmSetupState._audioPlayer.stop();
+        } catch (e) {
+          // TODO: replace delay with manual snackbar exit?
+          Future.delayed(Duration(seconds: 5), () {
+            exit(1);
+          });
+        }
       } else {
         await AndroidAlarmManager.cancel(_alarmID);
       }
@@ -260,55 +204,19 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
-  void _updateAlarmDuration(int duration) {
-    print(duration);
-
-    setState(() {
-      _alarmDuration = duration;
-      _alarmSet = false;
-    });
-  }
-
-  void _updateVolumeIncreaseRate(VolumeIncreaseRate volumeIncreaseRate) {
-    print(volumeIncreaseRate);
-
-    setState(() {
-      _volumeIncreaseRate = volumeIncreaseRate;
-      _alarmSet = false;
-    });
-  }
-
   static void _updateVolume() async {
-    // TODO: why is _alarmDuration == null ???
-    final int steps = _alarmDuration * 12;
-    final double timeDelta = 0.1 / _alarmDuration;
-
-    double currentTime = 0.0;
     double volume = 0.0;
 
-    for (int i = 0; i < steps; ++i) {
+    while (volume < 1.0) {
       await Future.delayed(const Duration(seconds: 5), () async {
-        volume = _determineVolume(currentTime);
+        // TODO: setup change rate to personal preference
+        volume += 0.1;
         await _AlarmSetupState._audioPlayer.setVolume(volume);
-        currentTime += timeDelta;
         print("Increasing volume to: $volume");
       });
     }
 
     print("Maximum volume reached!");
-  }
-
-  static double _determineVolume(double x) {
-    switch (_volumeIncreaseRate) {
-      case VolumeIncreaseRate.Constant:
-        return x;
-      case VolumeIncreaseRate.Speeding:
-        return pow(x, (10 / 6));
-      case VolumeIncreaseRate.Slowing:
-        return pow(x, (6 / 10));
-      default:
-        return x;
-    }
   }
 
   static void _alarm() async {
