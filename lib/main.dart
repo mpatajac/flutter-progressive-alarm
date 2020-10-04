@@ -198,7 +198,10 @@ class _AlarmSetupState extends State<AlarmSetup> {
     DateTime alarmTime = new DateTime(
         now.year,
         now.month,
-        _time.hour >= now.hour ? now.day : (now.day + 1),
+        (_time.hour < now.hour ||
+                _time.hour == now.hour && _time.minute < now.minute)
+            ? (now.day + 1)
+            : now.day,
         _time.hour,
         _time.minute);
 
