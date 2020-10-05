@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:android_alarm_manager/android_alarm_manager.dart';
+import 'package:background_fetch/background_fetch.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
 
 enum VolumeIncreaseRate { Speeding, Constant, Slowing }
@@ -33,18 +33,18 @@ class AlarmSetup extends StatefulWidget {
 
 class _AlarmSetupState extends State<AlarmSetup> {
   bool _alarmSet;
-  int _alarmID;
+  String _taskID;
   TimeOfDay _time;
   DateTime _alarmTime;
-  static int _alarmDuration;
-  static VolumeIncreaseRate _volumeIncreaseRate;
-  static AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
+  int _alarmDuration;
+  VolumeIncreaseRate _volumeIncreaseRate;
+  AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
   void initState() {
     super.initState();
     _alarmSet = false;
-    _alarmID = 0;
+    _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
     _alarmDuration = 5;
     _volumeIncreaseRate = VolumeIncreaseRate.Constant;
@@ -54,7 +54,17 @@ class _AlarmSetupState extends State<AlarmSetup> {
   }
 
   void initAsync() async {
-    await AndroidAlarmManager.initialize();
+    BackgroundFetch.configure(
+        BackgroundFetchConfig(
+            minimumFetchInterval: 15,
+            stopOnTerminate: false,
+            startOnBoot: true,
+            enableHeadless: true), (String taskId) {
+      if (_didAlarmStart()) {
+        _alarm();
+      }
+      BackgroundFetch.finish(taskId);
+    });
   }
 
   @override
@@ -209,20 +219,23 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
   void _updateAlarmState(bool startAlarm) async {
     if (startAlarm) {
-      await AndroidAlarmManager.oneShotAt(_alarmTime, _alarmID, _alarm,
-          allowWhileIdle: true, exact: true, wakeup: true);
+      BackgroundFetch.scheduleTask(TaskConfig(
+          taskId: _taskID,
+          delay: _alarmTime.difference(DateTime.now()).inMilliseconds,
+          periodic: false));
     } else {
+      BackgroundFetch.stop(_taskID);
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
-        await _AlarmSetupState._audioPlayer.stop();
-        await _AlarmSetupState._audioPlayer.dispose();
-
-        // TODO: replace delay with manual snackbar exit?
-        Future.delayed(Duration(seconds: 5), () {
-          exit(1);
-        });
-      } else {
-        await AndroidAlarmManager.cancel(_alarmID);
+        try {
+          await _audioPlayer.setVolume(0.0);
+          await _audioPlayer.stop();
+          await _audioPlayer.dispose();
+        } catch (e) {
+          Future.delayed(Duration(seconds: 3), () {
+            exit(1);
+          });
+        }
       }
     }
 
@@ -231,6 +244,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
+  // TODO: refactor
   bool _didAlarmStart() {
     DateTime now = DateTime.now();
     if (now.day < _alarmTime.day) {
@@ -245,6 +259,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return true;
   }
 
+  // TODO: fix
   void _updateAlarmTime() {
     DateTime now = DateTime.now();
     DateTime alarmTime = new DateTime(
@@ -278,8 +293,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
-  static void _updateVolume() async {
-    // TODO: why is _alarmDuration == null ???
+  void _updateVolume() async {
     final int steps = _alarmDuration * 12;
     final double timeDelta = 0.1 / _alarmDuration;
 
@@ -288,9 +302,9 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
     for (int i = 0; i < steps; ++i) {
       await Future.delayed(const Duration(seconds: 5), () async {
-        volume = _determineVolume(currentTime);
-        await _AlarmSetupState._audioPlayer.setVolume(volume);
         currentTime += timeDelta;
+        volume = _determineVolume(currentTime);
+        await _audioPlayer.setVolume(volume);
         print("Increasing volume to: $volume");
       });
     }
@@ -298,7 +312,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     print("Maximum volume reached!");
   }
 
-  static double _determineVolume(double x) {
+  double _determineVolume(double x) {
     switch (_volumeIncreaseRate) {
       case VolumeIncreaseRate.Constant:
         return x;
@@ -311,17 +325,19 @@ class _AlarmSetupState extends State<AlarmSetup> {
     }
   }
 
-  static void _alarm() async {
+  void _alarm() async {
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
+
     try {
-      await _AlarmSetupState._audioPlayer.open(Audio.liveStream(streamLink));
-      await _AlarmSetupState._audioPlayer.setVolume(0.0);
+      await _audioPlayer.open(Audio.liveStream(streamLink));
     } catch (e) {
       /// Use song as a backup
-      await _AlarmSetupState._audioPlayer.open(Audio("assets/audio/test.mp3"));
+      await _audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
+
+    await _audioPlayer.setVolume(0.0);
 
     _updateVolume();
   }
