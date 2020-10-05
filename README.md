@@ -1,23 +1,41 @@
-# Progressive alarm :alarm_clock:
+# :alarm_clock: Progressive alarm
 
 Flutter alarm clock app which will progressively increase sound volume over a set period of time.
 
-## Roadmap
+## :heavy_check_mark: Implemented
 
-- 0.0.1 &rarr; execute a function at the exact time :heavy_check_mark:
-- 0.0.2 &rarr; load and play a song/stream :heavy_check_mark:
-- 0.0.3 &rarr; increase sound volume over a span of time :heavy_check_mark:
+- execute a function at the exact time 
+- load and play a song/stream
+- increase sound volume over a span of time
+- refactor code into functions/methods to make further updates easier
+- add enable/disable button
+- add time picker (dynamically adjust alarm time)
+- MVP; simple app which will play a stream at a selected time and increase volume
+- choose how volume will increase (slow-fast, fast-slow, constant)
+- choose volume increase duration
+- notify users via snackbar
+- add custom app icon
+- display time remaining to alarm
 
 <!--- Spacing -->
 
-- 0.1.0 &rarr; MVP; simple app which will play a song/stream at a predefined, hardcoded time and increase volume :hourglass_flowing_sand:
-- 0.1.1 &rarr; refactor code into functions/methods to make further updates easier
-- 0.2.0 &rarr; add enable/disable button
-- 0.3.0 &rarr; add time picker (dynamically adjust alarm time)
-- 0.4.0 &rarr; enable user to select which song will be played
-- 0.5.0 &rarr; enable user to select which folder the songs will be picked from (but play only one song)
-- 0.6.0 &rarr; randomly choose song(s) from the selected folder
-- 0.7.0 &rarr; enable user to choose a stream
+## :hourglass_flowing_sand: Planned
+
+- extract alarm settings (duration, volume increase rate etc.) to separate screen
+- enable user to choose a stream
+- dynamic theme and main color
+- enable user to adapt app settings (theme, main color)
+- save user preferences and load them on app launch
+- fix time remaining not updating
+- enable user to preview stream ( :question_mark: )
+
+<!--- Spacing -->
+
+## :x: Discarded
+
+- enable user to select which song will be played
+- enable user to select which folder the songs will be picked from
+- randomly choose song(s) from the selected folder
 
 
 <!---
@@ -26,9 +44,3 @@ Flutter alarm clock app which will progressively increase sound volume over a se
 	pending 		- 		:hourglass_flowing_sand:
     bad/dropped	 	-   	:x:
 -->
-
-#### Icon legend
-- :heavy_check_mark: - done
-- :hourglass_flowing_sand: &nbsp;- pending
-- :question: &nbsp;- might not get implemented
-- :x: - bad/dropped

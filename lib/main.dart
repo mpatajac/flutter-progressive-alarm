@@ -1,11 +1,8 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
-
-enum VolumeIncreaseRate { Speeding, Constant, Slowing }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +34,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   String _taskID;
   TimeOfDay _time;
   DateTime _alarmTime;
-  int _alarmDuration;
-  VolumeIncreaseRate _volumeIncreaseRate;
+  // type is TimeOfDay for easier display
+  TimeOfDay _timeRemaining;
   AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
@@ -48,8 +45,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmRunning = false;
     _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
-    _alarmDuration = 5;
-    _volumeIncreaseRate = VolumeIncreaseRate.Constant;
+    _determineTimeRemaining();
     _updateAlarmTime(); // initialize _alarmTime
 
     initAsync();
@@ -78,9 +74,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
       body: Builder(builder: (BuildContext context) {
         return Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              SizedBox(height: 40),
               OutlineButton(
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
@@ -102,58 +97,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
                       _updateAlarmTime();
                     }
                   }),
-              SizedBox(height: 50),
               Container(
-                child: Text(
-                  'Alarm increase rate',
-                  style: TextStyle(fontSize: 16),
-                ),
-                height: 30,
+                child: _alarmSet && !_alarmRunning
+                    ? Text(
+                        '${_formatTime(time: _timeRemaining)}',
+                        style: TextStyle(color: Colors.black),
+                      )
+                    : null,
+                margin: EdgeInsets.only(top: 20),
               ),
-              DropdownButton(
-                value: _volumeIncreaseRate,
-                items: [
-                  DropdownMenuItem(
-                    child: Text("Start slow, gradualy speed up"),
-                    value: VolumeIncreaseRate.Speeding,
-                  ),
-                  DropdownMenuItem(
-                    child: Text("Keep constant rate"),
-                    value: VolumeIncreaseRate.Constant,
-                  ),
-                  DropdownMenuItem(
-                    child: Text("Start fast, gradualy slow down"),
-                    value: VolumeIncreaseRate.Slowing,
-                  ),
-                ],
-                onChanged: (VolumeIncreaseRate vir) =>
-                    _updateVolumeIncreaseRate(vir),
-                icon: Icon(Icons.show_chart),
-              ),
-              SizedBox(height: 50),
-              Container(
-                child: Text(
-                  'Alarm duration (in minutes)',
-                  style: TextStyle(fontSize: 16),
-                ),
-                height: 30,
-              ),
-              Slider(
-                min: 1,
-                max: 10,
-                divisions: 9,
-                value: _alarmDuration.toDouble(),
-                onChanged: (value) => _updateAlarmDuration(value.toInt()),
-                label: _alarmDuration.toString(),
-              ),
-              Wrap(
-                children: [
-                  Text("1"),
-                  Text("10"),
-                ],
-                spacing: MediaQuery.of(context).size.width - 75,
-              ),
-              SizedBox(height: 40),
+              SizedBox(height: 100),
               Container(
                 child: Text(
                   'Toggle alarm',
@@ -207,13 +160,31 @@ class _AlarmSetupState extends State<AlarmSetup> {
     /// Use alarm time as default value
     time = time ?? _time;
 
-    int hour = _time.hour;
-    int minute = _time.minute;
+    int hour = time.hour;
+    int minute = time.minute;
     return '${_fixLeadingZero(hour)}:${_fixLeadingZero(minute)}';
   }
 
   String _fixLeadingZero(int number) {
     return number < 10 ? '0$number' : '$number';
+  }
+
+  void _determineTimeRemaining() {
+    TimeOfDay now = TimeOfDay.now();
+    int alarmInMinutes = _time.hour * 60 + _time.minute;
+    int nowInMinutes = now.hour * 60 + now.minute;
+    int remainingInMinutes = alarmInMinutes - nowInMinutes;
+    if (nowInMinutes > alarmInMinutes) {
+      remainingInMinutes += 1440;
+    }
+
+    int remainingHours = remainingInMinutes ~/ 60;
+    int remainingMinutes = remainingInMinutes - (remainingHours * 60);
+
+    setState(() {
+      _timeRemaining =
+          TimeOfDay(hour: remainingHours, minute: remainingMinutes);
+    });
   }
 
   String _formSnackbarContent(bool alarmToggleState) {
@@ -234,6 +205,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
           taskId: _taskID,
           delay: _alarmTime.difference(DateTime.now()).inMilliseconds,
           periodic: false));
+      _determineTimeRemaining();
     } else {
       _alarmRunning = false;
       BackgroundFetch.stop(_taskID);
@@ -282,40 +254,14 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
-  void _updateAlarmDuration(int duration) {
-    print(duration);
-
-    setState(() {
-      _alarmDuration = duration;
-      _alarmSet = false;
-    });
-  }
-
-  void _updateVolumeIncreaseRate(VolumeIncreaseRate volumeIncreaseRate) {
-    print(volumeIncreaseRate);
-
-    setState(() {
-      _volumeIncreaseRate = volumeIncreaseRate;
-      _alarmSet = false;
-    });
-  }
-
   void _updateVolume() async {
-    final int steps = _alarmDuration * 12;
-    final double timeDelta = 0.1 / _alarmDuration;
-
-    double currentTime = 0.0;
     double volume = 0.0;
 
-    for (int i = 0; i < steps; ++i) {
-      if (!_alarmRunning) {
-        await _audioPlayer.setVolume(0.0);
-        return;
-      }
+    while (volume < 1.0) {
+      if (!_alarmRunning) return;
 
       await Future.delayed(const Duration(seconds: 5), () async {
-        currentTime += timeDelta;
-        volume = _determineVolume(currentTime);
+        volume += 0.1;
         await _audioPlayer.setVolume(volume);
         print("Increasing volume to: $volume");
       });
@@ -324,34 +270,19 @@ class _AlarmSetupState extends State<AlarmSetup> {
     print("Maximum volume reached!");
   }
 
-  double _determineVolume(double x) {
-    switch (_volumeIncreaseRate) {
-      case VolumeIncreaseRate.Constant:
-        return x;
-      case VolumeIncreaseRate.Speeding:
-        return pow(x, (10 / 6));
-      case VolumeIncreaseRate.Slowing:
-        return pow(x, (6 / 10));
-      default:
-        return x;
-    }
-  }
-
   void _alarm() async {
     _alarmRunning = true;
 
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
-
     try {
       await _audioPlayer.open(Audio.liveStream(streamLink));
+      await _audioPlayer.setVolume(0.0);
     } catch (e) {
       /// Use song as a backup
       await _audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
-
-    await _audioPlayer.setVolume(0.0);
 
     _updateVolume();
   }
