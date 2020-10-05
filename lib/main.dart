@@ -33,6 +33,7 @@ class AlarmSetup extends StatefulWidget {
 
 class _AlarmSetupState extends State<AlarmSetup> {
   bool _alarmSet;
+  bool _alarmRunning;
   String _taskID;
   TimeOfDay _time;
   DateTime _alarmTime;
@@ -44,6 +45,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
   void initState() {
     super.initState();
     _alarmSet = false;
+    _alarmRunning = false;
     _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
     _alarmDuration = 5;
@@ -224,7 +226,9 @@ class _AlarmSetupState extends State<AlarmSetup> {
           delay: _alarmTime.difference(DateTime.now()).inMilliseconds,
           periodic: false));
     } else {
+      _alarmRunning = false;
       BackgroundFetch.stop(_taskID);
+
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
         try {
@@ -301,6 +305,11 @@ class _AlarmSetupState extends State<AlarmSetup> {
     double volume = 0.0;
 
     for (int i = 0; i < steps; ++i) {
+      if (!_alarmRunning) {
+        await _audioPlayer.setVolume(0.0);
+        return;
+      }
+
       await Future.delayed(const Duration(seconds: 5), () async {
         currentTime += timeDelta;
         volume = _determineVolume(currentTime);
@@ -326,6 +335,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   }
 
   void _alarm() async {
+    _alarmRunning = true;
+
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
 
