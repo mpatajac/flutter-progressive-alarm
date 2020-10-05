@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:background_fetch/background_fetch.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
+
+enum VolumeIncreaseRate { Speeding, Constant, Slowing }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +39,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   DateTime _alarmTime;
   // type is TimeOfDay for easier display
   TimeOfDay _timeRemaining;
+  int _alarmDuration;
+  VolumeIncreaseRate _volumeIncreaseRate;
   AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
@@ -45,6 +50,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmRunning = false;
     _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
+    _alarmDuration = 5;
+    _volumeIncreaseRate = VolumeIncreaseRate.Constant;
     _determineTimeRemaining();
     _updateAlarmTime(); // initialize _alarmTime
 
@@ -106,7 +113,58 @@ class _AlarmSetupState extends State<AlarmSetup> {
                     : null,
                 margin: EdgeInsets.only(top: 20),
               ),
-              SizedBox(height: 100),
+              SizedBox(height: 50),
+              Container(
+                child: Text(
+                  'Alarm increase rate',
+                  style: TextStyle(fontSize: 16),
+                ),
+                height: 30,
+              ),
+              DropdownButton(
+                value: _volumeIncreaseRate,
+                items: [
+                  DropdownMenuItem(
+                    child: Text("Start slow, gradualy speed up"),
+                    value: VolumeIncreaseRate.Speeding,
+                  ),
+                  DropdownMenuItem(
+                    child: Text("Keep constant rate"),
+                    value: VolumeIncreaseRate.Constant,
+                  ),
+                  DropdownMenuItem(
+                    child: Text("Start fast, gradualy slow down"),
+                    value: VolumeIncreaseRate.Slowing,
+                  ),
+                ],
+                onChanged: (VolumeIncreaseRate vir) =>
+                    _updateVolumeIncreaseRate(vir),
+                icon: Icon(Icons.show_chart),
+              ),
+              SizedBox(height: 50),
+              Container(
+                child: Text(
+                  'Alarm duration (in minutes)',
+                  style: TextStyle(fontSize: 16),
+                ),
+                height: 30,
+              ),
+              Slider(
+                min: 1,
+                max: 10,
+                divisions: 9,
+                value: _alarmDuration.toDouble(),
+                onChanged: (value) => _updateAlarmDuration(value.toInt()),
+                label: _alarmDuration.toString(),
+              ),
+              Wrap(
+                children: [
+                  Text("1"),
+                  Text("10"),
+                ],
+                spacing: MediaQuery.of(context).size.width - 75,
+              ),
+              SizedBox(height: 40),
               Container(
                 child: Text(
                   'Toggle alarm',
@@ -254,14 +312,53 @@ class _AlarmSetupState extends State<AlarmSetup> {
     });
   }
 
+  void _updateAlarmDuration(int duration) {
+    print(duration);
+
+    setState(() {
+      _alarmDuration = duration;
+      _alarmSet = false;
+    });
+  }
+
+  void _updateVolumeIncreaseRate(VolumeIncreaseRate volumeIncreaseRate) {
+    print(volumeIncreaseRate);
+
+    setState(() {
+      _volumeIncreaseRate = volumeIncreaseRate;
+      _alarmSet = false;
+    });
+  }
+
+  double _determineVolume(double x) {
+    switch (_volumeIncreaseRate) {
+      case VolumeIncreaseRate.Constant:
+        return x;
+      case VolumeIncreaseRate.Speeding:
+        return pow(x, (10 / 6));
+      case VolumeIncreaseRate.Slowing:
+        return pow(x, (6 / 10));
+      default:
+        return x;
+    }
+  }
+
   void _updateVolume() async {
+    final int steps = _alarmDuration * 12;
+    final double timeDelta = 0.1 / _alarmDuration;
+
+    double currentTime = 0.0;
     double volume = 0.0;
 
-    while (volume < 1.0) {
-      if (!_alarmRunning) return;
+    for (int i = 0; i < steps; ++i) {
+      if (!_alarmRunning) {
+        await _audioPlayer.setVolume(0.0);
+        return;
+      }
 
       await Future.delayed(const Duration(seconds: 5), () async {
-        volume += 0.1;
+        currentTime += timeDelta;
+        volume = _determineVolume(currentTime);
         await _audioPlayer.setVolume(volume);
         print("Increasing volume to: $volume");
       });
@@ -275,14 +372,16 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
     /// Start player
     const streamLink = "http://kepler.shoutca.st:8404/";
+
     try {
       await _audioPlayer.open(Audio.liveStream(streamLink));
-      await _audioPlayer.setVolume(0.0);
     } catch (e) {
       /// Use song as a backup
       await _audioPlayer.open(Audio("assets/audio/test.mp3"));
       print("Stream not working.");
     }
+
+    await _audioPlayer.setVolume(0.0);
 
     _updateVolume();
   }
