@@ -34,6 +34,8 @@ class _AlarmSetupState extends State<AlarmSetup> {
   String _taskID;
   TimeOfDay _time;
   DateTime _alarmTime;
+  // type is TimeOfDay for easier display
+  TimeOfDay _timeRemaining;
   AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
 
   @override
@@ -43,6 +45,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
     _alarmRunning = false;
     _taskID = 'com.progressive_alarm.alarm';
     _time = TimeOfDay(hour: 9, minute: 0);
+    _determineTimeRemaining();
     _updateAlarmTime(); // initialize _alarmTime
 
     initAsync();
@@ -94,6 +97,15 @@ class _AlarmSetupState extends State<AlarmSetup> {
                       _updateAlarmTime();
                     }
                   }),
+              Container(
+                child: _alarmSet
+                    ? Text(
+                        '${_formatTime(time: _timeRemaining)}',
+                        style: TextStyle(color: Colors.black),
+                      )
+                    : null,
+                margin: EdgeInsets.only(top: 20),
+              ),
               SizedBox(height: 100),
               Container(
                 child: Text(
@@ -148,13 +160,31 @@ class _AlarmSetupState extends State<AlarmSetup> {
     /// Use alarm time as default value
     time = time ?? _time;
 
-    int hour = _time.hour;
-    int minute = _time.minute;
+    int hour = time.hour;
+    int minute = time.minute;
     return '${_fixLeadingZero(hour)}:${_fixLeadingZero(minute)}';
   }
 
   String _fixLeadingZero(int number) {
     return number < 10 ? '0$number' : '$number';
+  }
+
+  void _determineTimeRemaining() {
+    TimeOfDay now = TimeOfDay.now();
+    int alarmInMinutes = _time.hour * 60 + _time.minute;
+    int nowInMinutes = now.hour * 60 + now.minute;
+    int remainingInMinutes = alarmInMinutes - nowInMinutes;
+    if (nowInMinutes > alarmInMinutes) {
+      remainingInMinutes += 1440;
+    }
+
+    int remainingHours = remainingInMinutes ~/ 60;
+    int remainingMinutes = remainingInMinutes - (remainingHours * 60);
+
+    setState(() {
+      _timeRemaining =
+          TimeOfDay(hour: remainingHours, minute: remainingMinutes);
+    });
   }
 
   String _formSnackbarContent(bool alarmToggleState) {
@@ -175,9 +205,11 @@ class _AlarmSetupState extends State<AlarmSetup> {
           taskId: _taskID,
           delay: _alarmTime.difference(DateTime.now()).inMilliseconds,
           periodic: false));
+      _determineTimeRemaining();
     } else {
       _alarmRunning = false;
       BackgroundFetch.stop(_taskID);
+
       if (_didAlarmStart()) {
         /// Reset volume and stop the player/app
         try {
