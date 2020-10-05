@@ -10,17 +10,17 @@ Flutter alarm clock app which will progressively increase sound volume over a se
 - refactor code into functions/methods to make further updates easier
 - add enable/disable button
 - add time picker (dynamically adjust alarm time)
-- MVP; simple app which will play a stream at a selected time and increase volume
-- choose how volume will increase (slow-fast, fast-slow, constant)
-- choose volume increase duration
 - notify users via snackbar
 - add custom app icon
 - display time remaining to alarm
+- MVP; simple app which will play a stream at a selected time and increase volume
 
 <!--- Spacing -->
 
 ## :hourglass_flowing_sand: Planned
 
+- choose how volume will increase (slow-fast, fast-slow, constant)
+- choose volume increase duration
 - extract alarm settings (duration, volume increase rate etc.) to separate screen
 - enable user to choose a stream
 - dynamic theme and main color
