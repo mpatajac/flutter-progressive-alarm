@@ -107,16 +107,26 @@ class _AlarmSetupState extends State<AlarmSetup> {
                   onChanged: (bool alarmToggleState) {
                     Scaffold.of(context).showSnackBar(
                       SnackBar(
+                        duration: !alarmToggleState && _didAlarmStart()
+                            ? Duration(seconds: 10)
+                            : Duration(seconds: 4),
                         content: Text(
                           _formSnackbarContent(alarmToggleState),
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.bold,
-                            height: 1.5,
-                            letterSpacing: 1.1,
-                          ),
+                              fontSize: 20.0,
+                              fontWeight: FontWeight.bold,
+                              height: 1.5,
+                              letterSpacing: 1.1,
+                              color: Colors.white),
                         ),
+                        action: !alarmToggleState && _didAlarmStart()
+                            ? SnackBarAction(
+                                label: "Exit",
+                                onPressed: () => {exit(1)},
+                                textColor: Colors.white,
+                              )
+                            : null,
                         backgroundColor: Colors.blue,
                       ),
                     );
@@ -145,7 +155,6 @@ class _AlarmSetupState extends State<AlarmSetup> {
     return number < 10 ? '0$number' : '$number';
   }
 
-  // TODO: add waitTime (and 'exit'?)
   String _formSnackbarContent(bool alarmToggleState) {
     if (alarmToggleState) {
       return 'Alarm set for ${_formatTime()}!';
@@ -173,8 +182,7 @@ class _AlarmSetupState extends State<AlarmSetup> {
           await _audioPlayer.stop();
           await _audioPlayer.dispose();
         } catch (e) {
-          // TODO: replace delay with manual snackbar exit?
-          Future.delayed(Duration(seconds: 5), () {
+          Future.delayed(Duration(seconds: 3), () {
             exit(1);
           });
         }
@@ -216,7 +224,6 @@ class _AlarmSetupState extends State<AlarmSetup> {
 
     while (volume < 1.0) {
       await Future.delayed(const Duration(seconds: 5), () async {
-        // TODO: setup change rate to personal preference
         volume += 0.1;
         await _audioPlayer.setVolume(volume);
         print("Increasing volume to: $volume");
