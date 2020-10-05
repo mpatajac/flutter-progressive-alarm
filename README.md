@@ -1,8 +1,8 @@
-# Progressive alarm :alarm_clock:
+# :alarm_clock: Progressive alarm
 
 Flutter alarm clock app which will progressively increase sound volume over a set period of time.
 
-## Implemented :heavy_check_mark:
+## :heavy_check_mark: Implemented
 
 - execute a function at the exact time 
 - load and play a song/stream
@@ -19,7 +19,7 @@ Flutter alarm clock app which will progressively increase sound volume over a se
 
 <!--- Spacing -->
 
-## Planned :hourglass_flowing_sand:
+## :hourglass_flowing_sand: Planned
 
 - extract alarm settings (duration, volume increase rate etc.) to separate screen
 - enable user to choose a stream
@@ -31,7 +31,7 @@ Flutter alarm clock app which will progressively increase sound volume over a se
 
 <!--- Spacing -->
 
-## Discarded :x:
+## :x: Discarded
 
 - enable user to select which song will be played
 - enable user to select which folder the songs will be picked from
