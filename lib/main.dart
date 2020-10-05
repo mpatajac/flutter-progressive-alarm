@@ -251,25 +251,20 @@ class _AlarmSetupState extends State<AlarmSetup> {
   // TODO: refactor
   bool _didAlarmStart() {
     DateTime now = DateTime.now();
-    if (now.day < _alarmTime.day) {
-      return false;
-    }
-    if (now.hour < _alarmTime.hour) {
-      return false;
-    }
-    if (now.minute < _alarmTime.minute) {
-      return false;
-    }
-    return true;
+    return !(now.day < _alarmTime.day ||
+        now.hour < _alarmTime.hour ||
+        now.minute < _alarmTime.minute);
   }
 
-  // TODO: fix
   void _updateAlarmTime() {
     DateTime now = DateTime.now();
     DateTime alarmTime = new DateTime(
         now.year,
         now.month,
-        _time.hour >= now.hour ? now.day : (now.day + 1),
+        (_time.hour < now.hour ||
+                _time.hour == now.hour && _time.minute < now.minute)
+            ? (now.day + 1)
+            : now.day,
         _time.hour,
         _time.minute);
 
